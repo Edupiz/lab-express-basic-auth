@@ -17,6 +17,7 @@ const app = express();
 
 // ℹ️ This function is getting exported from the config folder. It runs most middlewares
 require('./config')(app);
+require("./config/session.config")(app);
 
 // default value for title local
 const projectName = 'lab-express-basic-auth';
@@ -25,11 +26,39 @@ const capitalized = string => string[0].toUpperCase() + string.slice(1).toLowerC
 app.locals.title = `${capitalized(projectName)}- Generated with Ironlauncher`;
 
 // 👇 Start handling routes here
+const userRoutes = require('./routes/auth.routes');
+app.use('/user', userRoutes);
+
+// 👇 Start handling routes here
 const index = require('./routes/index');
 app.use('/', index);
+
+app.use("/", require("./routes/auth.routes"));
 
 // ❗ To handle errors. Routes that don't exist or errors that you handle in specific routes
 require('./error-handling')(app);
 
-module.exports = app;
+// ℹ️ global package used to `normalize` paths amongst different operating systems
+// https://www.npmjs.com/package/path
+const path = require("path");
 
+// require express-session and connect-mongo
+const session = require("express-session");
+const MongoStore = require("connect-mongo");
+
+app.use(
+    session({
+      secret: process.env.SESS_SECRET,
+      saveUninitialized: false,
+      cookie: {
+        maxAge: 60 * 60 * 24 * 7,
+      },
+      store: MongoStore.create({
+        mongoUrl:
+          process.env.MONGODB_URI,
+        ttl: 60 * 60 * 24 * 7,
+      }),
+    })
+  );
+
+module.exports = app;
